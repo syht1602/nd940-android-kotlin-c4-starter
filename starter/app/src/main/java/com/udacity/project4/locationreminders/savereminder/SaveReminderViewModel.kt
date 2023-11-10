@@ -1,6 +1,7 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.app.Application
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.PointOfInterest
@@ -14,12 +15,29 @@ import kotlinx.coroutines.launch
 
 class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSource) :
     BaseViewModel(app) {
-    val reminderTitle = MutableLiveData<String>()
-    val reminderDescription = MutableLiveData<String>()
-    val reminderSelectedLocationStr = MutableLiveData<String>()
-    val selectedPOI = MutableLiveData<PointOfInterest>()
-    val latitude = MutableLiveData<Double>()
-    val longitude = MutableLiveData<Double>()
+    val reminderTitle = MutableLiveData<String?>()
+    val reminderDescription = MutableLiveData<String?>()
+    val reminderSelectedLocationStr = MutableLiveData<String?>()
+    val selectedPOI = MutableLiveData<PointOfInterest?>()
+    val latitude = MutableLiveData<Double?>()
+    val longitude = MutableLiveData<Double?>()
+    val reminderData = MutableLiveData<ReminderDataItem>()
+
+    private val _isSaveLocationClick = MutableLiveData<Boolean?>()
+    val isSaveLocationClick: LiveData<Boolean?>
+        get() = _isSaveLocationClick
+
+    private val _isSaveReminderClick = MutableLiveData<Boolean?>()
+    val isSaveReminderClick: LiveData<Boolean?>
+        get() = _isSaveReminderClick
+
+    private val _isAddGeoFenceData = MutableLiveData<Boolean?>()
+    val isAddGeoFenceData: LiveData<Boolean?>
+        get() = _isAddGeoFenceData
+
+    private val _isNavigateToSelectLocation = MutableLiveData<Boolean?>()
+    val isNavigateToSelectLocation: LiveData<Boolean?>
+        get() = _isNavigateToSelectLocation
 
     /**
      * Clear the live data objects to start fresh next time the view model gets called
@@ -36,9 +54,18 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     /**
      * Validate the entered data then saves the reminder data to the DataSource
      */
-    fun validateAndSaveReminder(reminderData: ReminderDataItem) {
-        if (validateEnteredData(reminderData)) {
-            saveReminder(reminderData)
+    fun validateAndSaveReminder() {
+        reminderData.value = ReminderDataItem(
+            title = reminderTitle.value,
+            description = reminderDescription.value,
+            location = reminderSelectedLocationStr.value,
+            latitude = latitude.value,
+            longitude = longitude.value
+        )
+        reminderData.value?.let {
+            if (validateEnteredData(it)) {
+                saveReminder(it)
+            }
         }
     }
 
@@ -48,19 +75,24 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     private fun saveReminder(reminderData: ReminderDataItem) {
         showLoading.value = true
         viewModelScope.launch {
-            dataSource.saveReminder(
-                ReminderDTO(
-                    reminderData.title,
-                    reminderData.description,
-                    reminderData.location,
-                    reminderData.latitude,
-                    reminderData.longitude,
-                    reminderData.id
+            try {
+                dataSource.saveReminder(
+                    ReminderDTO(
+                        reminderData.title,
+                        reminderData.description,
+                        reminderData.location,
+                        reminderData.latitude,
+                        reminderData.longitude,
+                        reminderData.id
+                    )
                 )
-            )
-            showLoading.value = false
-            showToast.value = app.getString(R.string.reminder_saved)
-            navigationCommand.value = NavigationCommand.Back
+                showLoading.value = false
+                showToast.value = app.getString(R.string.reminder_saved)
+                navigationCommand.value = NavigationCommand.Back
+                onAddGeoFenceData()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -78,5 +110,52 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
             return false
         }
         return true
+    }
+
+    fun onGeoFenceUpdateSuccessfully(){
+        showToast.value = app.getString(R.string.reminder_saved)
+        navigationCommand.value = NavigationCommand.Back
+    }
+
+    fun onGeoFenceUpdateError(){
+        showErrorMessage.value = app.getString(R.string.error_adding_geofence)
+    }
+    fun onCheckLocationUnknownError(){
+        showErrorMessage.value = app.getString(R.string.geofence_unknown_error)
+    }
+    fun onCheckLocationError(){
+        showErrorMessage.value = app.getString(R.string.permission_denied_explanation)
+    }
+
+    fun onSaveReminder() {
+        _isSaveReminderClick.value = true
+    }
+
+    fun onSaveReminderCompleted() {
+        _isSaveReminderClick.value = null
+    }
+
+    fun onAddGeoFenceData() {
+        _isAddGeoFenceData.value = true
+    }
+
+    fun onAddGeoFenceDataCompleted() {
+        _isAddGeoFenceData.value = null
+    }
+
+    fun onNavigateToSelectLocation() {
+        _isNavigateToSelectLocation.value = true
+    }
+
+    fun onNavigateToSelectLocationCompleted() {
+        _isNavigateToSelectLocation.value = null
+    }
+
+    fun onSaveLocation() {
+        _isSaveLocationClick.value = true
+    }
+
+    fun onSaveLocationCompleted() {
+        _isSaveLocationClick.value = null
     }
 }

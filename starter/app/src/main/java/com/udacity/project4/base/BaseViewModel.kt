@@ -3,6 +3,7 @@ package com.udacity.project4.base
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
+import com.google.firebase.auth.FirebaseAuth
 import com.udacity.project4.utils.SingleLiveEvent
 
 /**
@@ -16,4 +17,9 @@ abstract class BaseViewModel(app: Application) : AndroidViewModel(app) {
     val showToast: SingleLiveEvent<String> = SingleLiveEvent()
     val showLoading: SingleLiveEvent<Boolean> = SingleLiveEvent()
     val showNoData: MutableLiveData<Boolean> = MutableLiveData()
+    val isLoggedIn = SingleLiveEvent<Boolean>()
+
+    fun getLoginState() {
+        isLoggedIn.postValue(FirebaseAuth.getInstance().currentUser != null)
+    }
 }
